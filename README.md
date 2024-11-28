@@ -9,6 +9,6 @@ Students are expected to:
 Student Info
 =========================
 
-* Student Name: USTH ICT1
-* Student ID: Not-Vietnamese
-* Student Group ID: Not-for-now
+* Student Name: Nguyen Manh Khoi
+* Student ID: 22BI13219
+* Student Group ID: 
