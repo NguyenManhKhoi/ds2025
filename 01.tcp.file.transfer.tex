@@ -1,0 +1,155 @@
+\documentclass[a4paper,12pt]{article}
+
+% Packages for formatting and better output
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{color}
+
+% Set up page margins
+\usepackage[margin=1in]{geometry}
+
+\title{File Transfer over TCP/IP using Sockets\\ \large Lab Report}
+\author{Nguyen Manh Khoi \\ 22BI13219}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+File transfer protocols are important in modern networking. The goal of this lab is to create a simple file transfer system using the Transmission Control Protocol (TCP). Using Python’s socket library, we built a client-server application where the client sends a file to the server over a TCP/IP connection.
+
+\section{Objectives}
+The objectives of this lab were:
+\begin{itemize}
+    \item Implement a file transfer system using TCP sockets.
+    \item Understand client-server communication using socket programming.
+    \item Explore how data is transferred in chunks over a network.
+\end{itemize}
+
+\section{Methodology}
+In this lab, the client-server architecture was implemented for file transfer over TCP/IP. The methodology was as follows:
+
+\begin{enumerate}
+    \item The **server** was created to listen for incoming client connections on a specific port.
+    \item Once a client connected, the **server** received the file sent by the client in chunks, ensuring that large files could be handled efficiently.
+    \item The **client** connected to the server, sent the filename, and then transferred the file data in 1024-byte chunks.
+    \item The **server** saved the file to disk once the entire file had been received.
+    \item Both the client and server closed the connection once the transfer was completed.
+\end{enumerate}
+
+\section{System Design}
+The system has two main components: the **server** and the **client**. The server listens on a predefined port, accepts incoming connections, and receives files from the client. The client connects to the server, sends the file, and closes the connection once the transfer is complete.
+
+\subsection{File Transfer Protocol}
+The file transfer protocol follows a simple sequence:
+\begin{enumerate}
+    \item The client sends the filename to the server.
+    \item The client then sends the file in 1024-byte chunks.
+    \item The server receives each chunk and writes it to a file on the disk.
+    \item Once the file transfer is complete, the server confirms the transfer, and both the client and server close the connection.
+\end{enumerate}
+
+\section{Implementation}
+The implementation of the file transfer system was done using Python's `socket` library. The code for the server and client is provided below.
+
+\subsection{Server Code}
+
+\begin{lstlisting}[language=Python, caption=Server Code]
+import socket
+
+HOST = '172.19.219.4'  # Localhost
+PORT = 12344        # Port to listen on
+
+# Create a socket 
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.bind((HOST, PORT))
+
+# Start listening 
+server_socket.listen(1)
+print(f"Server listening on {HOST}:{PORT}...")
+
+# Connection from client
+conn, addr = server_socket.accept()
+print(f"Connected by {addr}")
+
+# Receive the file
+file_name = conn.recv(1024).decode('utf-8')  # Receive file name
+print(f"Receiving file: {file_name}")
+
+
+with open(file_name, 'wb') as f:
+    while True:
+        
+        data = conn.recv(1024)
+        if not data:
+            break  
+        f.write(data)
+
+print(f"File {file_name} received successfully.")
+conn.close()  # Close 
+server_socket.close()  
+\end{lstlisting}
+
+\subsection{Client Code}
+
+\begin{lstlisting}[language=Python, caption=Client Code]
+import socket
+
+def client_program():
+    # server and client must have the same IP and port
+    host = '172.19.219.4'  
+    port = 12344  # Port
+    
+    # TCP socket
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    
+    # Connect to server
+    client_socket.connect((host, port))
+    
+    # File
+    filename = 'received_transfer_file.txt'  # Name the the file 
+    
+    # Try to receive the file from the server
+    with open(filename, 'wb') as f:
+        print(f"Receiving file from the server...")
+        
+        while True:
+            data = client_socket.recv(1024)
+            if not data:
+                print("No more data received, closing connection.")
+                break  # No more data received, end of file transfer
+            f.write(data)  # Write data to the file
+
+    print(f"File received successfully! Saved as {filename}")
+    
+    # Close socket connection
+    client_socket.close()
+
+if __name__ == '__main__':
+    client_program()
+\end{lstlisting}
+
+\subsection{Sample Output from the Client}
+
+\begin{verbatim}
+Server listening on 172.19.219.4:12344...
+Connected by ('172.19.208.1', 59923)
+Receiving file: example.txt
+File example.txt received successfully.
+\end{verbatim}
+
+The file `example.txt` was successfully transferred from the client to the server, and the server saved it in the current directory.
+
+\section{Discussion}
+This lab demonstrated the basic principles of file transfer over a TCP/IP connection using socket programming. The system successfully transferred files by breaking them into smaller chunks to handle larger files. 
+
+Additionally, the client-server system could be upgraded to handle multiple file transfers simultaneously.
+
+\section{Conclusion}
+This lab shown how to use TCP/IP sockets to transfer files between a client and a server. By following the basic principles of socket programming, we were able to successfully implement a file transfer system that efficiently sends and receives files. 
+
+\end{document}
