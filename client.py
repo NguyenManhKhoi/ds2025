@@ -1,34 +1,35 @@
-import socket
+from mpi4py import MPI
+import os
 
 def client_program():
-    # server and client must have the same IP and port
-    host = '172.19.219.4'  
-    port = 12344  # Port
-    
-    # TCP socket
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
-    # Connect to server
-    client_socket.connect((host, port))
-    
-    # File
-    filename = 'received_transfer_file.txt'  # Name the the file 
-    
-    # Try to receive the file from the server
-    with open(filename, 'wb') as f:
-        print(f"Receiving file from the server...")
+    # MPI init
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    if rank == 1:  # Client process with rank 1
+        host = '172.19.219.4'  # Server IP (same as before)
+        port = 12344            # Port
+
+        # File 
+        filename = 'send_file.txt'
+
+        # Send the filename to the server (rank 0)
+        comm.send(filename, dest=0, tag=1)
+        print(f"Sending file: {filename}")
+
+        # Open the file to send
+        with open(filename, 'rb') as f:
+            data = f.read(1024)  
+            while data:
+                comm.send(data, dest=0, tag=2)  
+                data = f.read(1024)
+
         
-        while True:
-            data = client_socket.recv(1024)
-            if not data:
-                print("No more data received, closing connection.")
-                break  # No more data received, end of file transfer
-            f.write(data)  # Write data to the file
+        comm.send(None, dest=0, tag=2)
+        print(f"File {filename} sent successfully.")
+    else:
+        print(f"Process {rank} is idle...")
 
-    print(f"File received successfully! Saved as {filename}")
-    
-    # Close ocket connection
-    client_socket.close()
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     client_program()

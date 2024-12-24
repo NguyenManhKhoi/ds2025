@@ -1,33 +1,33 @@
-import socket
+from mpi4py import MPI
+import os
 
-HOST = '172.19.219.4'  # Localhost
-PORT = 12344        # Port to listen on
+def server_program():
+    # mpi init
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
 
-# Create a socket 
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind((HOST, PORT))
+    # Only process 0 will act as the server
+    if rank == 0:
+        host = '172.19.219.4'  # Server ip
+        port = 12344            # Port 
 
-# Start listening 
-server_socket.listen(1)
-print(f"Server listening on {HOST}:{PORT}...")
-
-# Connection from client
-conn, addr = server_socket.accept()
-print(f"Connected by {addr}")
-
-# Receive the file
-file_name = conn.recv(1024).decode('utf-8')  # Receive file name
-print(f"Receiving file: {file_name}")
-
-# Open the file in write-binary mode to save it
-with open(file_name, 'wb') as f:
-    while True:
+        print(f"Server listening on {host}:{port}...")
         
-        data = conn.recv(1024)
-        if not data:
-            break  
-        f.write(data)
+        # Receive  from client (rank 1)
+        file_name = comm.recv(source=1, tag=1)  # Client (rank 1) sends 
+        print(f"Server is receiving the file: {file_name}")
 
-print(f"File {file_name} received successfully.")
-conn.close()  # Close 
-server_socket.close()  
+        # Open the file to save data
+        with open(file_name, 'wb') as f:
+            data = comm.recv(source=1, tag=2)  # Receive from client
+            while data:
+                f.write(data)
+                data = comm.recv(source=1, tag=2)
+
+        print(f"File {file_name} received successfully.")
+    else:
+        print(f"Process {rank} is idle...")
+
+if __name__ == "__main__":
+    server_program()
