@@ -1,0 +1,172 @@
+\documentclass[a4paper,12pt]{article}
+
+% Packages for formatting and better output
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{color}
+
+% Set up page margins
+\usepackage[margin=1in]{geometry}
+
+\title{File Transfer using MPI\\ \large Lab Report}
+\author{Nguyen Manh Khoi \\ 22BI13219}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+Message Passing Interface (MPI) is a communication protocol that allows multiple processes to communicate with each other, typically in distributed computing environments. MPI is suitable for distributed systems where processes running on different machines communicate with each other.
+
+The goal of this lab is to use MPI to develop a simple file transfer system where multiple processes (acting as client and server) communicate to transfer files. The system employs Python's \texttt{mpi4py} library to demonstrate this process.
+
+\section{Objectives}
+The objectives of this lab:
+\begin{itemize}
+    \item Implement a file transfer system using MPI for communication.
+    \item Demonstrate how multiple processes communicate to transfer a file from client to server.
+    \item Implement a basic MPI client-server communication model using \texttt{mpi4py}.
+\end{itemize}
+
+\section{Methodology}
+
+\begin{enumerate}
+    \item The **server** (rank 0) waits for a filename from the client (rank 1), then listens for file data sent by the client.
+    \item The **client** (rank 1) sends the filename to the server and then sends the file data in chunks to the server.
+    \item The server writes the received data into a file and saves it locally once all data has been received.
+    \item Communication between the server and client is carried out using MPI's \texttt{send()} and \texttt{recv()} methods.
+\end{enumerate}
+
+\section{System Design}
+The system consists of two main components: the **server** and the **client**. The server listens for incoming messages, including the filename and file data, while the client sends these messages. The design assumes two processes running on a single machine (for simplicity) but can be expanded to multiple machines in a distributed environment.
+
+\subsection{File Transfer Protocol}
+The file transfer protocol follows this sequence:
+\begin{enumerate}
+    \item The client sends the file name to the server.
+    \item The server requests the file data and writes it to a new file.
+    \item The client sends the file data in chunks, which are received by the server.
+    \item The server acknowledges receipt and writes the data to the file.
+    \item The transfer ends when the client sends a ``None'' message signaling the end of data transmission.
+\end{enumerate}
+
+\section{Implementation}
+The file transfer system is implemented using Python's \texttt{mpi4py} library. Below is the code for both the server and client.
+
+\subsection{Server Code}
+
+\begin{lstlisting}[language=Python, caption=Server Code using MPI]
+from mpi4py import MPI
+import os
+
+def server_program():
+    # Initialize MPI
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    # process 0 act as the server
+    if rank == 0:
+        host = '172.19.219.4'  # Server IP (same as before)
+        port = 12344            # Port to listen on
+
+        print(f"Server listening on {host}:{port}...")
+        
+        # Receive file from client
+        file_name = comm.recv(source=1, tag=1)  # Client (rank 1) sends file name
+        print(f"Server is receiving the file: {file_name}")
+
+        # Save data
+        with open(file_name, 'wb') as f:
+            data = comm.recv(source=1, tag=2)  # Receive file content from client
+            while data:
+                f.write(data)
+                data = comm.recv(source=1, tag=2)
+
+        print(f"File {file_name} received successfully.")
+    else:
+        print(f"Process {rank} is idle...")
+
+if __name__ == "__main__":
+    server_program()
+\end{lstlisting}
+
+\subsection{Client Code}
+
+\begin{lstlisting}[language=Python, caption=Client Code using MPI]
+from mpi4py import MPI
+import os
+
+def client_program():
+    # Init mpi
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    if rank == 1:  # Client process with rank 1
+        host = '172.19.219.4'  # Server IP (same as before)
+        port = 12344            # Port
+
+        # File sent to server
+        filename = 'send_file.txt'
+
+        # Send file to server 
+        comm.send(filename, dest=0, tag=1)
+        print(f"Sending file: {filename}")
+
+        # Open the file to send
+        with open(filename, 'rb') as f:
+            data = f.read(1024)  # Read file in chunks
+            while data:
+                comm.send(data, dest=0, tag=2)  # Send data chunks to server
+                data = f.read(1024)
+
+        # Show server file transfer 
+        comm.send(None, dest=0, tag=2)
+        print(f"File {filename} sent successfully.")
+    else:
+        print(f"Process {rank} is idle...")
+
+if __name__ == "__main__":
+    client_program()
+\end{lstlisting}
+
+\subsection{Sample Output from the Server}
+
+\begin{verbatim}
+Server listening on 172.19.219.4:12344...
+Server is receiving the file: send_file.txt
+File send_file.txt received successfully.
+\end{verbatim}
+
+The server waits for the file transfer to complete. Upon receiving the file name and data, it writes the data to a file on disk.
+
+\subsection{Sample Output from the Client}
+
+\begin{verbatim}
+Sending file: send_file.txt
+File send_file.txt sent successfully.
+\end{verbatim}
+
+The client sends the file in chunks and informs the server once the transfer is complete. If the transfer is successful, the client displays a success message.
+
+\section{Discussion}
+This lab demonstrated file transfer using MPI in a parallel and distributed manner. By using multiple processes, we were able to transfer a file in chunks. This parallel communication model enhances scalability in distributed systems.
+
+Some areas for improvement include:
+\begin{itemize}
+    \item Handling large files more efficiently by implementing more advanced chunking and parallel file sending.
+    \item Enhancing error handling, especially for network issues or file system errors.
+    \item Scaling the system to multiple clients and servers using MPI's collective operations.
+\end{itemize}
+
+\section{Conclusion}
+In this lab, we successfully implemented a file transfer system using MPI. Python's \texttt{mpi4py} library enabled efficient communication between client and server processes. The system allowed the client to send files to the server and handle file transfers in parallel.
+
+Future improvements could include concurrent client handling, better error handling, and more efficient data chunking to support larger files.
+
+\end{document}
